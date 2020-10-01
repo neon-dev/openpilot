@@ -16,9 +16,7 @@ from selfdrive.loggerd.config import ROOT
 
 from common import android
 from common.params import Params
-
 from common.api import Api
-from selfdrive.car.tesla.readconfig import CarSettings
 from common.xattr import getxattr, setxattr
 
 UPLOAD_ATTR_NAME = 'user.upload'
@@ -27,6 +25,7 @@ UPLOAD_ATTR_VALUE = b'1'
 fake_upload = os.getenv("FAKEUPLOAD") is not None
 
 def raise_on_thread(t, exctype):
+  '''Raises an exception in the threads with id tid'''
   for ctid, tobj in threading._active.items():
     if tobj is t:
       tid = ctid
@@ -34,7 +33,6 @@ def raise_on_thread(t, exctype):
   else:
     raise Exception("Could not find thread")
 
-  '''Raises an exception in the threads with id tid'''
   if not inspect.isclass(exctype):
     raise TypeError("Only types can be raised (not instances)")
 
@@ -89,12 +87,9 @@ def is_on_hotspot():
 
     is_android = result.startswith('192.168.43.')
     is_ios = result.startswith('172.20.10.')
-    car_set = CarSettings()
-    blockUploadWhileTethering = car_set.get_value("blockUploadWhileTethering")
-    tetherIP = car_set.get_value("tetherIP")
-    is_other_tether = blockUploadWhileTethering and result.startswith(tetherIP)
     is_entune = result.startswith('10.0.2.')
-    return (is_android or is_ios or is_other_tether or is_entune)
+
+    return (is_android or is_ios or is_entune)
   except Exception:
     return False
 
@@ -139,7 +134,7 @@ class Uploader():
           is_uploaded = getxattr(fn, UPLOAD_ATTR_NAME)
         except OSError:
           cloudlog.event("uploader_getxattr_failed", exc=self.last_exc, key=key, fn=fn)
-          is_uploaded = True # deleter could have deleted
+          is_uploaded = True  # deleter could have deleted
         if is_uploaded:
           continue
 
@@ -171,7 +166,7 @@ class Uploader():
       if url_resp.status_code == 412:
         self.last_resp = url_resp
         return
-        
+
       url_resp_json = json.loads(url_resp.text)
       url = url_resp_json['url']
       headers = url_resp_json['headers']
@@ -179,9 +174,11 @@ class Uploader():
 
       if fake_upload:
         cloudlog.info("*** WARNING, THIS IS A FAKE UPLOAD TO %s ***" % url)
+
         class FakeResponse():
           def __init__(self):
             self.status_code = 200
+
         self.last_resp = FakeResponse()
       else:
         with open(fn, "rb") as f:
@@ -250,7 +247,8 @@ def uploader_fn(exit_event):
 
   backoff = 0.1
   while True:
-    allow_raw_upload = (params.get("IsUploadRawEnabled") != b"0")
+    offroad = params.get("IsOffroad") == b'1'
+    allow_raw_upload = (params.get("IsUploadRawEnabled") != b"0") and offroad
     on_hotspot = is_on_hotspot()
     on_wifi = is_on_wifi()
     should_upload = on_wifi and not on_hotspot
@@ -259,8 +257,8 @@ def uploader_fn(exit_event):
       return
 
     d = uploader.next_file_to_upload(with_raw=allow_raw_upload and should_upload)
-    if d is None:
-      time.sleep(5)
+    if d is None:  # Nothing to upload
+      time.sleep(60 if offroad else 5)
       continue
 
     key, fn = d

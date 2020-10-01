@@ -1,5 +1,6 @@
 #!/bin/sh
 export LD_LIBRARY_PATH="/system/lib64:$LD_LIBRARY_PATH"
+<<<<<<< HEAD
 . /data/openpilot/selfdrive/car/tesla/readconfig.sh
 TBP=/data/tinkla_buddy_pro
 if test -f "$TBP"; then
@@ -7,3 +8,7 @@ if test -f "$TBP"; then
 else
   exec ./_ui
 fi
+=======
+exec ./_ui
+
+>>>>>>> release2

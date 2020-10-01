@@ -18,9 +18,17 @@
 typedef struct FramebufferState FramebufferState;
 typedef struct TouchState TouchState;
 
+<<<<<<< HEAD
 FramebufferState* framebuffer_init_linux(
     const char* name, int32_t layer, int alpha,
     int *out_w, int *out_h, GLFWmousebuttonfun mouse_event_handler) {
+=======
+extern "C" {
+
+FramebufferState* framebuffer_init(
+    const char* name, int32_t layer, int alpha,
+    int *out_w, int *out_h) {
+>>>>>>> release2
   glfwInit();
 
 #ifndef __APPLE__
@@ -39,11 +47,17 @@ FramebufferState* framebuffer_init_linux(
   if (!window) {
     printf("glfwCreateWindow failed\n");
   }
+<<<<<<< HEAD
   if (mouse_event_handler != NULL) {
     glfwSetMouseButtonCallback(window,mouse_event_handler);
   }
   glfwMakeContextCurrent(window);
   glfwSwapInterval(0);
+=======
+
+  glfwMakeContextCurrent(window);
+  glfwSwapInterval(1);
+>>>>>>> release2
 
   // clear screen
   glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
@@ -55,8 +69,11 @@ FramebufferState* framebuffer_init_linux(
 
   return (FramebufferState*)window;
 }
+<<<<<<< HEAD
 extern "C" {
 
+=======
+>>>>>>> release2
 
 void framebuffer_set_power(FramebufferState *s, int mode) {
 }
@@ -66,6 +83,11 @@ void framebuffer_swap(FramebufferState *s) {
   glfwPollEvents();
 }
 
+<<<<<<< HEAD
+=======
+bool set_brightness(int brightness) { return true; }
+
+>>>>>>> release2
 void touch_init(TouchState *s) {
   printf("touch_init\n");
 }
@@ -82,6 +104,7 @@ int touch_read(TouchState *s, int* out_x, int* out_y) {
 
 #include "sound.hpp"
 
+<<<<<<< HEAD
 void ui_sound_init() {}
 void ui_sound_destroy() {}
 
@@ -89,6 +112,13 @@ void set_volume(int volume) {}
 
 void play_alert_sound(AudibleAlert alert) {}
 void stop_alert_sound(AudibleAlert alert) {}
+=======
+bool Sound::init(int volume) { return true; }
+bool Sound::play(AudibleAlert alert) { printf("play sound: %d\n", (int)alert); return true; }
+void Sound::stop() {}
+void Sound::setVolume(int volume) {}
+Sound::~Sound() {}
+>>>>>>> release2
 
 #include "common/visionimg.h"
 #include <sys/mman.h>

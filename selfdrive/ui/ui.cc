@@ -4,16 +4,24 @@
 #include <unistd.h>
 #include <assert.h>
 #include <sys/mman.h>
+<<<<<<< HEAD
 #include <sys/resource.h>
 
 #include <czmq.h>
 
+=======
+#include <string>
+#include <sstream>
+#include <sys/resource.h>
+#include <czmq.h>
+>>>>>>> release2
 #include "common/util.h"
 #include "common/timing.h"
 #include "common/swaglog.h"
 #include "common/touch.h"
 #include "common/visionimg.h"
 #include "common/params.h"
+<<<<<<< HEAD
 #include "ui.hpp"
 #include "sound.hpp"
 
@@ -33,6 +41,15 @@ static void set_brightness(UIState *s, int brightness) {
     if (f != NULL) {
       fprintf(f, "%d", brightness);
       fclose(f);
+=======
+#include "common/utilpp.h"
+#include "ui.hpp"
+
+static void ui_set_brightness(UIState *s, int brightness) {
+  static int last_brightness = -1;
+  if (last_brightness != brightness && (s->awake || brightness == 0)) {
+    if (set_brightness(brightness)) {
+>>>>>>> release2
       last_brightness = brightness;
     }
   }
@@ -52,12 +69,17 @@ static void enable_event_processing(bool yes) {
 static void set_awake(UIState *s, bool awake) {
 #ifdef QCOM
   if (awake) {
+<<<<<<< HEAD
     // 30 second timeout at 30 fps
     if (((s->b.tri_state_switch == 3) || (s->b.keepEonOff)) && !s->b.recording) {
       s->awake_timeout = 3*30;
     } else {
       s->awake_timeout = 30*30;
     }
+=======
+    // 30 second timeout
+    s->awake_timeout = 30*UI_FREQ;
+>>>>>>> release2
   }
   if (s->awake != awake) {
     s->awake = awake;
@@ -69,7 +91,11 @@ static void set_awake(UIState *s, bool awake) {
       enable_event_processing(true);
     } else {
       LOGW("awake off");
+<<<<<<< HEAD
       set_brightness(s, 0);
+=======
+      ui_set_brightness(s, 0);
+>>>>>>> release2
       framebuffer_set_power(s->fb, HWC_POWER_MODE_OFF);
       enable_event_processing(false);
     }
@@ -81,6 +107,7 @@ static void set_awake(UIState *s, bool awake) {
 }
 
 static void update_offroad_layout_state(UIState *s) {
+<<<<<<< HEAD
   struct capn rc;
   capn_init_malloc(&rc);
   struct capn_segment *cs = capn_root(&rc).seg;
@@ -129,6 +156,28 @@ static void navigate_to_home(UIState *s) {
   update_offroad_layout_state(s);
 #else
   // computer UI doesn't have offroad home
+=======
+#ifdef QCOM
+  static int timeout = 0;
+  static bool prev_collapsed = false;
+  static cereal::UiLayoutState::App prev_app = cereal::UiLayoutState::App::NONE;
+  if (timeout > 0) {
+    timeout--;
+  }
+  if (prev_collapsed != s->scene.uilayout_sidebarcollapsed || prev_app != s->active_app || timeout == 0) {
+    capnp::MallocMessageBuilder msg;
+    auto event = msg.initRoot<cereal::Event>();
+    event.setLogMonoTime(nanos_since_boot());
+    auto layout = event.initUiLayoutState();
+    layout.setActiveApp(s->active_app);
+    layout.setSidebarCollapsed(s->scene.uilayout_sidebarcollapsed);
+    s->pm->send("offroadLayout", msg);
+    LOGD("setting active app to %d with sidebar %d", (int)s->active_app, s->scene.uilayout_sidebarcollapsed);
+    prev_collapsed = s->scene.uilayout_sidebarcollapsed;
+    prev_app = s->active_app;
+    timeout = 2 * UI_FREQ;
+  }
+>>>>>>> release2
 #endif
 }
 
@@ -136,6 +185,7 @@ static void handle_sidebar_touch(UIState *s, int touch_x, int touch_y) {
   if (!s->scene.uilayout_sidebarcollapsed && touch_x <= sbr_w) {
     if (touch_x >= settings_btn_x && touch_x < (settings_btn_x + settings_btn_w)
       && touch_y >= settings_btn_y && touch_y < (settings_btn_y + settings_btn_h)) {
+<<<<<<< HEAD
       navigate_to_settings(s);
     }
     if (touch_x >= home_btn_x && touch_x < (home_btn_x + home_btn_w)
@@ -144,11 +194,23 @@ static void handle_sidebar_touch(UIState *s, int touch_x, int touch_y) {
       if (s->started) {
         s->scene.uilayout_sidebarcollapsed = true;
         update_offroad_layout_state(s);
+=======
+      s->active_app = cereal::UiLayoutState::App::SETTINGS;
+    }
+    else if (touch_x >= home_btn_x && touch_x < (home_btn_x + home_btn_w)
+      && touch_y >= home_btn_y && touch_y < (home_btn_y + home_btn_h)) {
+      if (s->started) {
+        s->active_app = cereal::UiLayoutState::App::NONE;
+        s->scene.uilayout_sidebarcollapsed = true;
+      } else {
+        s->active_app = cereal::UiLayoutState::App::HOME;
+>>>>>>> release2
       }
     }
   }
 }
 
+<<<<<<< HEAD
 static void handle_driver_view_touch(UIState *s, int touch_x, int touch_y) {
   int err = write_db_value(NULL, "IsDriverViewEnabled", "0", 1);
 }
@@ -162,6 +224,16 @@ static void handle_vision_touch(UIState *s, int touch_x, int touch_y) {
       handle_driver_view_touch(s, touch_x, touch_y);
     }
     update_offroad_layout_state(s);
+=======
+static void handle_vision_touch(UIState *s, int touch_x, int touch_y) {
+  if (s->started && (touch_x >= s->scene.ui_viz_rx - bdr_s)
+    && (s->active_app != cereal::UiLayoutState::App::SETTINGS)) {
+    if (!s->scene.frontview) {
+      s->scene.uilayout_sidebarcollapsed = !s->scene.uilayout_sidebarcollapsed;
+    } else {
+      write_db_value("IsDriverViewEnabled", "0", 1);
+    }
+>>>>>>> release2
   }
 }
 
@@ -170,6 +242,7 @@ static void set_do_exit(int sig) {
   do_exit = 1;
 }
 
+<<<<<<< HEAD
 static void read_param_bool(bool* param, const char* param_name) {
   char *s;
   const int result = read_db_value(NULL, param_name, &s, NULL);
@@ -292,10 +365,73 @@ static void ui_init(UIState *s) {
 #else
   s->fb = framebuffer_init_linux("ui", 0x00010000, true, &s->fb_w, &s->fb_h,bb_mouse_event_handler);
 #endif 
+=======
+template <class T>
+static int read_param(T* param, const char *param_name, bool persistent_param = false){
+  T param_orig = *param;
+  char *value;
+  size_t sz;
+
+  int result = read_db_value(param_name, &value, &sz, persistent_param);
+  if (result == 0){
+    std::string s = std::string(value, sz); // value is not null terminated
+    free(value);
+
+    // Parse result
+    std::istringstream iss(s);
+    iss >> *param;
+
+    // Restore original value if parsing failed
+    if (iss.fail()) {
+      *param = param_orig;
+      result = -1;
+    }
+  }
+  return result;
+}
+
+template <class T>
+static int read_param_timeout(T* param, const char* param_name, int* timeout, bool persistent_param = false) {
+  int result = -1;
+  if (*timeout > 0){
+    (*timeout)--;
+  } else {
+    *timeout = 2 * UI_FREQ; // 0.5Hz
+    result = read_param(param, param_name, persistent_param);
+  }
+  return result;
+}
+
+static int write_param_float(float param, const char* param_name, bool persistent_param = false) {
+  char s[16];
+  int size = snprintf(s, sizeof(s), "%f", param);
+  return write_db_value(param_name, s, MIN(size, sizeof(s)), persistent_param);
+}
+
+static void ui_init(UIState *s) {
+
+  pthread_mutex_init(&s->lock, NULL);
+  s->sm = new SubMaster({"model", "controlsState", "uiLayoutState", "liveCalibration", "radarState", "thermal",
+                         "health", "ubloxGnss", "driverState", "dMonitoringState"
+#ifdef SHOW_SPEEDLIMIT
+                                    , "liveMapData"
+#endif
+  });
+  s->pm = new PubMaster({"offroadLayout"});
+
+  s->ipc_fd = -1;
+  s->scene.satelliteCount = -1;
+  s->started = false;
+  s->vision_seen = false;
+
+  // init display
+  s->fb = framebuffer_init("ui", 0, true, &s->fb_w, &s->fb_h);
+>>>>>>> release2
   assert(s->fb);
 
   set_awake(s, true);
 
+<<<<<<< HEAD
   s->model_changed = false;
   s->livempc_or_radarstate_changed = false;
 #if defined(QCOM) || defined(QCOM2)
@@ -324,6 +460,8 @@ static void ui_init(UIState *s) {
   s->b.scr_scissor_offset = (float)(s->b.scr_w * 3) / 4.0f - (float)(s->b.scr_h);
   mouse_ui_state = s;
 #endif
+=======
+>>>>>>> release2
   ui_nvg_init(s);
 }
 
@@ -331,8 +469,11 @@ static void ui_init_vision(UIState *s, const VisionStreamBufs back_bufs,
                            int num_back_fds, const int *back_fds,
                            const VisionStreamBufs front_bufs, int num_front_fds,
                            const int *front_fds) {
+<<<<<<< HEAD
   const VisionUIInfo ui_info = back_bufs.buf_info.ui_info;
 
+=======
+>>>>>>> release2
   assert(num_back_fds == UI_BUF_COUNT);
   assert(num_front_fds == UI_BUF_COUNT);
 
@@ -342,6 +483,7 @@ static void ui_init_vision(UIState *s, const VisionStreamBufs back_bufs,
   s->cur_vision_idx = -1;
   s->cur_vision_front_idx = -1;
 
+<<<<<<< HEAD
   s->scene = (UIScene){
       .frontview = getenv("FRONTVIEW") != NULL,
       .fullview = getenv("FULLVIEW") != NULL,
@@ -354,6 +496,11 @@ static void ui_init_vision(UIState *s, const VisionStreamBufs back_bufs,
       .world_objects_visible = false,  // Invisible until we receive a calibration message.
       .gps_planner_active = false,
   };
+=======
+  s->scene.frontview = getenv("FRONTVIEW") != NULL;
+  s->scene.fullview = getenv("FULLVIEW") != NULL;
+  s->scene.world_objects_visible = false;  // Invisible until we receive a calibration message.
+>>>>>>> release2
 
   s->rgb_width = back_bufs.width;
   s->rgb_height = back_bufs.height;
@@ -365,6 +512,7 @@ static void ui_init_vision(UIState *s, const VisionStreamBufs back_bufs,
   s->rgb_front_stride = front_bufs.stride;
   s->rgb_front_buf_len = front_bufs.buf_len;
 
+<<<<<<< HEAD
   s->rgb_transform = (mat4){{
     2.0f/s->rgb_width, 0.0f, 0.0f, -1.0f,
     0.0f, 2.0f/s->rgb_height, 0.0f, -1.0f,
@@ -376,6 +524,12 @@ static void ui_init_vision(UIState *s, const VisionStreamBufs back_bufs,
   read_param_bool(&s->is_metric, "IsMetric");
   read_param_bool(&s->longitudinal_control, "LongitudinalControl");
   read_param_bool(&s->limit_set_speed, "LimitSetSpeed");
+=======
+  read_param(&s->speed_lim_off, "SpeedLimitOffset");
+  read_param(&s->is_metric, "IsMetric");
+  read_param(&s->longitudinal_control, "LongitudinalControl");
+  read_param(&s->limit_set_speed, "LimitSetSpeed");
+>>>>>>> release2
 
   // Set offsets so params don't get read at the same time
   s->longitudinal_control_timeout = UI_FREQ / 3;
@@ -383,6 +537,7 @@ static void ui_init_vision(UIState *s, const VisionStreamBufs back_bufs,
   s->limit_set_speed_timeout = UI_FREQ;
 }
 
+<<<<<<< HEAD
 static PathData read_path(cereal_ModelData_PathData_ptr pathp) {
   PathData ret = {0};
 
@@ -396,10 +551,22 @@ static PathData read_path(cereal_ModelData_PathData_ptr pathp) {
   capn_resolve(&polyp.p);
   for (int i = 0; i < POLYFIT_DEGREE; i++) {
     ret.poly[i] = capn_to_f32(capn_get32(polyp, i));
+=======
+static void read_path(PathData& p, const cereal::ModelData::PathData::Reader &pathp) {
+  p = {};
+
+  p.prob = pathp.getProb();
+  p.std = pathp.getStd();
+
+  auto polyp = pathp.getPoly();
+  for (int i = 0; i < POLYFIT_DEGREE; i++) {
+    p.poly[i] = polyp[i];
+>>>>>>> release2
   }
 
   // Compute points locations
   for (int i = 0; i < MODEL_PATH_DISTANCE; i++) {
+<<<<<<< HEAD
     ret.points[i] = ret.poly[0] * (i*i*i) + ret.poly[1] * (i*i)+ ret.poly[2] * i + ret.poly[3];
   }
 
@@ -428,11 +595,32 @@ static ModelData read_model(cereal_ModelData_ptr modelp) {
 static void update_status(UIState *s, int status) {
   //BB Variable for the old status
   int old_status = s->status;
+=======
+    p.points[i] = p.poly[0] * (i*i*i) + p.poly[1] * (i*i)+ p.poly[2] * i + p.poly[3];
+  }
+
+  p.validLen = pathp.getValidLen();
+}
+
+static void read_model(ModelData &d, const cereal::ModelData::Reader &model) {
+  d = {};
+  read_path(d.path, model.getPath());
+  read_path(d.left_lane, model.getLeftLane());
+  read_path(d.right_lane, model.getRightLane());
+  auto leadd = model.getLead();
+  d.lead = (LeadData){
+      .dist = leadd.getDist(), .prob = leadd.getProb(), .std = leadd.getStd(),
+  };
+}
+
+static void update_status(UIState *s, int status) {
+>>>>>>> release2
   if (s->status != status) {
     s->status = status;
   }
 }
 
+<<<<<<< HEAD
 
 void handle_message(UIState *s, Message * msg) {
   struct capn ctx;
@@ -525,18 +713,59 @@ void handle_message(UIState *s, Message * msg) {
       if (s->alert_blinked) {
         if (s->alert_blinking_alpha > 0.0 && s->alert_blinking_alpha < 1.0) {
           s->alert_blinking_alpha += (0.05*datad.alertBlinkingRate);
+=======
+void handle_message(UIState *s, SubMaster &sm) {
+  UIScene &scene = s->scene;
+  if (s->started && sm.updated("controlsState")) {
+    auto event = sm["controlsState"];
+    scene.controls_state = event.getControlsState();
+    s->controls_timeout = 1 * UI_FREQ;
+    s->controls_seen = true;
+
+    auto alert_sound = scene.controls_state.getAlertSound();
+    if (scene.alert_type.compare(scene.controls_state.getAlertType()) != 0) {
+      if (alert_sound == AudibleAlert::NONE) {
+        s->sound.stop();
+      } else {
+        s->sound.play(alert_sound);
+      }
+    }
+    scene.alert_text1 = scene.controls_state.getAlertText1();
+    scene.alert_text2 = scene.controls_state.getAlertText2();
+    scene.alert_size = scene.controls_state.getAlertSize();
+    scene.alert_type = scene.controls_state.getAlertType();
+    auto alertStatus = scene.controls_state.getAlertStatus();
+    if (alertStatus == cereal::ControlsState::AlertStatus::USER_PROMPT) {
+      update_status(s, STATUS_WARNING);
+    } else if (alertStatus == cereal::ControlsState::AlertStatus::CRITICAL) {
+      update_status(s, STATUS_ALERT);
+    } else{
+      update_status(s, scene.controls_state.getEnabled() ? STATUS_ENGAGED : STATUS_DISENGAGED);
+    }
+
+    float alert_blinkingrate = scene.controls_state.getAlertBlinkingRate();
+    if (alert_blinkingrate > 0.) {
+      if (s->alert_blinked) {
+        if (s->alert_blinking_alpha > 0.0 && s->alert_blinking_alpha < 1.0) {
+          s->alert_blinking_alpha += (0.05*alert_blinkingrate);
+>>>>>>> release2
         } else {
           s->alert_blinked = false;
         }
       } else {
         if (s->alert_blinking_alpha > 0.25) {
+<<<<<<< HEAD
           s->alert_blinking_alpha -= (0.05*datad.alertBlinkingRate);
+=======
+          s->alert_blinking_alpha -= (0.05*alert_blinkingrate);
+>>>>>>> release2
         } else {
           s->alert_blinking_alpha += 0.25;
           s->alert_blinked = true;
         }
       }
     }
+<<<<<<< HEAD
   } else if (eventd.which == cereal_Event_radarState) {
     struct cereal_RadarState datad;
     cereal_read_RadarState(&datad, eventd.radarState);
@@ -664,10 +893,77 @@ void handle_message(UIState *s, Message * msg) {
   }
 
   s->started = s->thermal_started || s->preview_started ;
+=======
+  }
+  if (sm.updated("radarState")) {
+    auto data = sm["radarState"].getRadarState();
+    scene.lead_data[0] = data.getLeadOne();
+    scene.lead_data[1] = data.getLeadTwo();
+  }
+  if (sm.updated("liveCalibration")) {
+    scene.world_objects_visible = true;
+    auto extrinsicl = sm["liveCalibration"].getLiveCalibration().getExtrinsicMatrix();
+    for (int i = 0; i < 3 * 4; i++) {
+      scene.extrinsic_matrix.v[i] = extrinsicl[i];
+    }
+  }
+  if (sm.updated("model")) {
+    read_model(scene.model, sm["model"].getModel());
+  }
+  // else if (which == cereal::Event::LIVE_MPC) {
+  //   auto data = event.getLiveMpc();
+  //   auto x_list = data.getX();
+  //   auto y_list = data.getY();
+  //   for (int i = 0; i < 50; i++){
+  //     scene.mpc_x[i] = x_list[i];
+  //     scene.mpc_y[i] = y_list[i];
+  //   }
+  //   s->livempc_or_radarstate_changed = true;
+  // }
+  if (sm.updated("uiLayoutState")) {
+    auto data = sm["uiLayoutState"].getUiLayoutState();
+    s->active_app = data.getActiveApp();
+    scene.uilayout_sidebarcollapsed = data.getSidebarCollapsed();
+  }
+#ifdef SHOW_SPEEDLIMIT
+  if (sm.updated("liveMapData")) {
+    scene.map_valid = sm["liveMapData"].getLiveMapData().getMapValid();
+  }
+#endif
+  if (sm.updated("thermal")) {
+    scene.thermal = sm["thermal"].getThermal();
+  }
+  if (sm.updated("ubloxGnss")) {
+    auto data = sm["ubloxGnss"].getUbloxGnss();
+    if (data.which() == cereal::UbloxGnss::MEASUREMENT_REPORT) {
+      scene.satelliteCount = data.getMeasurementReport().getNumMeas();
+    }
+  }
+  if (sm.updated("health")) {
+    scene.hwType = sm["health"].getHealth().getHwType();
+    s->hardware_timeout = 5*UI_FREQ; // 5 seconds
+  }
+  if (sm.updated("driverState")) {
+    scene.driver_state = sm["driverState"].getDriverState();
+  }
+  if (sm.updated("dMonitoringState")) {
+    scene.dmonitoring_state = sm["dMonitoringState"].getDMonitoringState();
+    scene.is_rhd = scene.dmonitoring_state.getIsRHD();
+    scene.frontview = scene.dmonitoring_state.getIsPreview();
+  }
+
+  // timeout on frontview
+  if ((sm.frame - sm.rcv_frame("dMonitoringState")) > 1*UI_FREQ) {
+    scene.frontview = false;
+  }
+
+  s->started = scene.thermal.getStarted() || scene.frontview;
+>>>>>>> release2
   // Handle onroad/offroad transition
   if (!s->started) {
     if (s->status != STATUS_STOPPED) {
       update_status(s, STATUS_STOPPED);
+<<<<<<< HEAD
       s->alert_sound_timeout = 0;
       s->vision_seen = false;
       s->controls_seen = false;
@@ -699,6 +995,27 @@ static void check_messages(UIState *s) {
 
       delete msg;
     }
+=======
+      s->vision_seen = false;
+      s->controls_seen = false;
+      s->active_app = cereal::UiLayoutState::App::HOME;
+
+      #ifndef QCOM
+      // disconnect from visionipc on PC
+      close(s->ipc_fd);
+      s->ipc_fd = -1;
+      #endif
+    }
+  } else if (s->status == STATUS_STOPPED) {
+    update_status(s, STATUS_DISENGAGED);
+    s->active_app = cereal::UiLayoutState::App::NONE;
+  }
+}
+
+static void check_messages(UIState *s) {
+  if (s->sm->update(0) > 0){
+    handle_message(s, *(s->sm));
+>>>>>>> release2
   }
 }
 
@@ -706,12 +1023,19 @@ static void ui_update(UIState *s) {
   int err;
 
   if (s->vision_connect_firstrun) {
+<<<<<<< HEAD
     set_awake(s, true);
+=======
+>>>>>>> release2
     // cant run this in connector thread because opengl.
     // do this here for now in lieu of a run_on_main_thread event
 
     for (int i=0; i<UI_BUF_COUNT; i++) {
+<<<<<<< HEAD
       if(s->khr[i] != NULL) {
+=======
+      if(s->khr[i] != 0) {
+>>>>>>> release2
         visionimg_destroy_gl(s->khr[i], s->priv_hnds[i]);
         glDeleteTextures(1, &s->frame_texs[i]);
       }
@@ -741,7 +1065,11 @@ static void ui_update(UIState *s) {
     }
 
     for (int i=0; i<UI_BUF_COUNT; i++) {
+<<<<<<< HEAD
       if(s->khr_front[i] != NULL) {
+=======
+      if(s->khr_front[i] != 0) {
+>>>>>>> release2
         visionimg_destroy_gl(s->khr_front[i], s->priv_hnds_front[i]);
         glDeleteTextures(1, &s->frame_front_texs[i]);
       }
@@ -773,7 +1101,10 @@ static void ui_update(UIState *s) {
     assert(glGetError() == GL_NO_ERROR);
 
     s->scene.uilayout_sidebarcollapsed = true;
+<<<<<<< HEAD
     update_offroad_layout_state(s);
+=======
+>>>>>>> release2
     s->scene.ui_viz_rx = (box_x-sbr_w+bdr_s*2);
     s->scene.ui_viz_rw = (box_w+sbr_w-(bdr_s*2));
     s->scene.ui_viz_ro = 0;
@@ -786,8 +1117,19 @@ static void ui_update(UIState *s) {
 
   zmq_pollitem_t polls[1] = {{0}};
   // Take an rgb image from visiond if there is one
+<<<<<<< HEAD
   while(true) {
     assert(s->ipc_fd >= 0);
+=======
+  assert(s->ipc_fd >= 0);
+  while(true) {
+    if (s->ipc_fd < 0) {
+      // TODO: rethink this, for now it should only trigger on PC
+      LOGW("vision disconnected by other thread");
+      s->vision_connected = false;
+      return;
+    }
+>>>>>>> release2
     polls[0].fd = s->ipc_fd;
     polls[0].events = ZMQ_POLLIN;
     #ifdef UI_60FPS
@@ -848,10 +1190,13 @@ static void ui_update(UIState *s) {
         s->cur_vision_idx = idx;
         // printf("v %d\n", ((uint8_t*)s->bufs[idx].addr)[0]);
       }
+<<<<<<< HEAD
       //BB merge: not sure where this will go for now
       //if (((awake) && (s->b.tri_state_switch != 3) && (!s->b.keepEonOff)) || (s->b.recording)){
       //  set_awake(s, true);
       //}
+=======
+>>>>>>> release2
     } else {
       assert(false);
     }
@@ -897,7 +1242,10 @@ static int vision_subscribe(int fd, VisionPacket *rp, VisionStreamType type) {
 }
 
 static void* vision_connect_thread(void *args) {
+<<<<<<< HEAD
   int err;
+=======
+>>>>>>> release2
   set_thread_name("vision_connect");
 
   UIState *s = (UIState*)args;
@@ -928,6 +1276,7 @@ static void* vision_connect_thread(void *args) {
     s->vision_connect_firstrun = true;
 
     // Drain sockets
+<<<<<<< HEAD
     while (true){
       auto polls = s->poller->poll(0);
       if (polls.size() == 0)
@@ -939,6 +1288,9 @@ static void* vision_connect_thread(void *args) {
         delete msg;
       }
     }
+=======
+    s->sm->drain();
+>>>>>>> release2
 
     pthread_mutex_unlock(&s->lock);
   }
@@ -966,7 +1318,11 @@ static void* light_sensor_thread(void *args) {
 
   // need to do this
   struct sensor_t const* list;
+<<<<<<< HEAD
   int count = module->get_sensors_list(module, &list);
+=======
+  module->get_sensors_list(module, &list);
+>>>>>>> release2
 
   int SENSOR_LIGHT = 7;
 
@@ -998,6 +1354,7 @@ fail:
   return NULL;
 }
 
+<<<<<<< HEAD
 
 #endif
 
@@ -1019,12 +1376,17 @@ int is_leon() {
 
 
 
+=======
+#endif
+
+>>>>>>> release2
 int main(int argc, char* argv[]) {
   int err;
   setpriority(PRIO_PROCESS, 0, -14);
 
   zsys_handler_set(NULL);
   signal(SIGINT, (sighandler_t)set_do_exit);
+<<<<<<< HEAD
 #if !defined(QCOM) && !defined(QCOM2)
   if (argc == 4) {
     if (strcmp(argv[1],"-rez")==0) {
@@ -1041,6 +1403,13 @@ int main(int argc, char* argv[]) {
   //BB init our UI
   bb_ui_init(s);
   
+=======
+
+  UIState uistate = {};
+  UIState *s = &uistate;
+  ui_init(s);
+
+>>>>>>> release2
   enable_event_processing(true);
 
   pthread_t connect_thread_handle;
@@ -1054,6 +1423,7 @@ int main(int argc, char* argv[]) {
                        light_sensor_thread, s);
   assert(err == 0);
 #endif
+<<<<<<< HEAD
   s->b.touch_last_width = s->scene.ui_viz_rw;
   TouchState touch = {0};
   touch_init(&touch);
@@ -1079,6 +1449,35 @@ int main(int argc, char* argv[]) {
   s->started = false;
   s->vision_seen = false;
 
+=======
+
+  TouchState touch = {0};
+  touch_init(&touch);
+  s->touch_fd = touch.fd;
+
+  // light sensor scaling params
+  const bool LEON = util::read_file("/proc/cmdline").find("letv") != std::string::npos;
+
+  float brightness_b, brightness_m;
+  int result = read_param(&brightness_b, "BRIGHTNESS_B", true);
+  result += read_param(&brightness_m, "BRIGHTNESS_M", true);
+
+  if(result != 0){
+    brightness_b = LEON ? 10.0 : 5.0;
+    brightness_m = LEON ? 2.6 : 1.3;
+    write_param_float(brightness_b, "BRIGHTNESS_B", true);
+    write_param_float(brightness_m, "BRIGHTNESS_M", true);
+  }
+
+  float smooth_brightness = brightness_b;
+
+  const int MIN_VOLUME = LEON ? 12 : 9;
+  const int MAX_VOLUME = LEON ? 15 : 12;
+  assert(s->sound.init(MIN_VOLUME));
+
+  int draws = 0;
+
+>>>>>>> release2
   while (!do_exit) {
     bool should_swap = false;
     if (!s->started) {
@@ -1090,11 +1489,19 @@ int main(int argc, char* argv[]) {
     double u1 = millis_since_boot();
 
     // light sensor is only exposed on EONs
+<<<<<<< HEAD
     float clipped_brightness = (s->light_sensor*BRIGHTNESS_M) + BRIGHTNESS_B;
     if (clipped_brightness > 512) clipped_brightness = 512;
     smooth_brightness = clipped_brightness * 0.01 + smooth_brightness * 0.99;
     if (smooth_brightness > 255) smooth_brightness = 255;
     set_brightness(s, (int)smooth_brightness);
+=======
+    float clipped_brightness = (s->light_sensor*brightness_m) + brightness_b;
+    if (clipped_brightness > 512) clipped_brightness = 512;
+    smooth_brightness = clipped_brightness * 0.01 + smooth_brightness * 0.99;
+    if (smooth_brightness > 255) smooth_brightness = 255;
+    ui_set_brightness(s, (int)smooth_brightness);
+>>>>>>> release2
 
     // resize vision for collapsing sidebar
     const bool hasSidebar = !s->scene.uilayout_sidebarcollapsed;
@@ -1104,16 +1511,20 @@ int main(int argc, char* argv[]) {
 
     // poll for touch events
     int touch_x = -1, touch_y = -1;
+<<<<<<< HEAD
     int dc_touch_x = -1, dc_touch_y = -1;
     s->b.touch_timeout --;
     if (s->b.touch_timeout < 0) {
       s->b.touch_timeout = 0;
     }
+=======
+>>>>>>> release2
     int touched = touch_poll(&touch, &touch_x, &touch_y, 0);
     if (touched == 1) {
       set_awake(s, true);
       handle_sidebar_touch(s, touch_x, touch_y);
       handle_vision_touch(s, touch_x, touch_y);
+<<<<<<< HEAD
       s->b.touch_last = true;
       s->b.touch_last_x = touch_x;
       s->b.touch_last_y = touch_y;
@@ -1142,6 +1553,19 @@ int main(int argc, char* argv[]) {
       check_messages(s);
     } else {
       //set_awake(s, true);
+=======
+    }
+
+    if (!s->started) {
+      // always process events offroad
+      check_messages(s);
+
+      if (s->started) {
+        s->controls_timeout = 5 * UI_FREQ;
+      }
+    } else {
+      set_awake(s, true);
+>>>>>>> release2
       // Car started, fetch a new rgb image from ipc
       if (s->vision_connected){
         ui_update(s);
@@ -1151,9 +1575,13 @@ int main(int argc, char* argv[]) {
 
       // Visiond process is just stopped, force a redraw to make screen blank again.
       if (!s->started) {
+<<<<<<< HEAD
         s->scene.satelliteCount = -1;
         s->scene.uilayout_sidebarcollapsed = false;
         update_offroad_layout_state(s);
+=======
+        s->scene.uilayout_sidebarcollapsed = false;
+>>>>>>> release2
         ui_draw(s);
         glFinish();
         should_swap = true;
@@ -1171,22 +1599,30 @@ int main(int argc, char* argv[]) {
     if (s->hardware_timeout > 0) {
       s->hardware_timeout--;
     } else {
+<<<<<<< HEAD
       s->scene.hwType = cereal_HealthData_HwType_unknown;
+=======
+      s->scene.hwType = cereal::HealthData::HwType::UNKNOWN;
+>>>>>>> release2
     }
 
     // Don't waste resources on drawing in case screen is off
     if (s->awake) {
       ui_draw(s);
+<<<<<<< HEAD
       if (s->vision_connected) {
 	nvgScale(s->vg,s->b.scr_scale_x,s->b.scr_scale_y);
         dashcam(s, dc_touch_x, dc_touch_y);
         bb_ui_draw_UI(s) ;
         ui_draw_infobar(s);
       }
+=======
+>>>>>>> release2
       glFinish();
       should_swap = true;
     }
 
+<<<<<<< HEAD
     if (s->volume_timeout > 0) {
       s->volume_timeout--;
     } else {
@@ -1237,6 +1673,49 @@ int main(int argc, char* argv[]) {
       s->scene.athenaStatus = NET_ERROR;
     }
     update_offroad_layout_timeout(s, &s->offroad_layout_timeout);
+=======
+    s->sound.setVolume(fmin(MAX_VOLUME, MIN_VOLUME + s->scene.controls_state.getVEgo() / 5)); // up one notch every 5 m/s
+
+    if (s->controls_timeout > 0) {
+      s->controls_timeout--;
+    } else if (s->started && !s->scene.frontview) {
+      if (!s->controls_seen) {
+        // car is started, but controlsState hasn't been seen at all
+        s->scene.alert_text1 = "openpilot Unavailable";
+        s->scene.alert_text2 = "Waiting for controls to start";
+        s->scene.alert_size = cereal::ControlsState::AlertSize::MID;
+      } else {
+        // car is started, but controls is lagging or died
+        LOGE("Controls unresponsive");
+
+        if (s->scene.alert_text2 != "Controls Unresponsive") {
+          s->sound.play(AudibleAlert::CHIME_WARNING_REPEAT);
+        }
+
+        s->scene.alert_text1 = "TAKE CONTROL IMMEDIATELY";
+        s->scene.alert_text2 = "Controls Unresponsive";
+        s->scene.alert_size = cereal::ControlsState::AlertSize::FULL;
+        update_status(s, STATUS_ALERT);
+      }
+      ui_draw_vision_alert(s, s->scene.alert_size, s->status, s->scene.alert_text1.c_str(), s->scene.alert_text2.c_str());
+    }
+
+    read_param_timeout(&s->is_metric, "IsMetric", &s->is_metric_timeout);
+    read_param_timeout(&s->longitudinal_control, "LongitudinalControl", &s->longitudinal_control_timeout);
+    read_param_timeout(&s->limit_set_speed, "LimitSetSpeed", &s->limit_set_speed_timeout);
+    read_param_timeout(&s->speed_lim_off, "SpeedLimitOffset", &s->limit_set_speed_timeout);
+    int param_read = read_param_timeout(&s->last_athena_ping, "LastAthenaPingTime", &s->last_athena_ping_timeout);
+    if (param_read != -1) { // Param was updated this loop
+      if (param_read != 0) { // Failed to read param
+        s->scene.athenaStatus = NET_DISCONNECTED;
+      } else if (nanos_since_boot() - s->last_athena_ping < 70e9) {
+        s->scene.athenaStatus = NET_CONNECTED;
+      } else {
+        s->scene.athenaStatus = NET_ERROR;
+      }
+    }
+    update_offroad_layout_state(s);
+>>>>>>> release2
 
     pthread_mutex_unlock(&s->lock);
 
@@ -1254,7 +1733,10 @@ int main(int argc, char* argv[]) {
   }
 
   set_awake(s, true);
+<<<<<<< HEAD
   ui_sound_destroy();
+=======
+>>>>>>> release2
 
   // wake up bg thread to exit
   pthread_mutex_lock(&s->lock);
@@ -1266,6 +1748,11 @@ int main(int argc, char* argv[]) {
 
   err = pthread_join(connect_thread_handle, NULL);
   assert(err == 0);
+<<<<<<< HEAD
 
+=======
+  delete s->sm;
+  delete s->pm;
+>>>>>>> release2
   return 0;
 }

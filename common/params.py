@@ -22,16 +22,14 @@ file in place without messing with <params_dir>/d.
 """
 import time
 import os
-import string
-import binascii
 import errno
-import sys
 import shutil
 import fcntl
 import tempfile
 import threading
 from enum import Enum
 from common.basedir import PARAMS
+
 
 def mkdirs_exists_ok(path):
   try:
@@ -45,7 +43,6 @@ class TxType(Enum):
   PERSISTENT = 1
   CLEAR_ON_MANAGER_START = 2
   CLEAR_ON_PANDA_DISCONNECT = 3
-  CLEAR_ON_CAR_START = 4
 
 
 class UnknownKeyName(Exception):
@@ -53,16 +50,17 @@ class UnknownKeyName(Exception):
 
 
 keys = {
-  "AccessToken": [TxType.CLEAR_ON_MANAGER_START], #BB what happends if no int connection?
+  "AccessToken": [TxType.CLEAR_ON_MANAGER_START],
   "AthenadPid": [TxType.PERSISTENT],
   "CalibrationParams": [TxType.PERSISTENT],
-  "CarParams": [TxType.CLEAR_ON_MANAGER_START, TxType.CLEAR_ON_PANDA_DISCONNECT], #BB we had [TxType.CLEAR_ON_CAR_START],
+  "CarParams": [TxType.CLEAR_ON_MANAGER_START, TxType.CLEAR_ON_PANDA_DISCONNECT],
   "CarParamsCache": [TxType.CLEAR_ON_MANAGER_START, TxType.CLEAR_ON_PANDA_DISCONNECT],
   "CarVin": [TxType.CLEAR_ON_MANAGER_START, TxType.CLEAR_ON_PANDA_DISCONNECT],
   "CommunityFeaturesToggle": [TxType.PERSISTENT],
   "CompletedTrainingVersion": [TxType.PERSISTENT],
   "ControlsParams": [TxType.PERSISTENT],
   "DisablePowerDown": [TxType.PERSISTENT],
+  "DisableUpdates": [TxType.PERSISTENT],
   "DoUninstall": [TxType.CLEAR_ON_MANAGER_START],
   "DongleId": [TxType.PERSISTENT],
   "GitBranch": [TxType.PERSISTENT],
@@ -82,6 +80,7 @@ keys = {
   "IsUploadRawEnabled": [TxType.PERSISTENT],
   "LastAthenaPingTime": [TxType.PERSISTENT],
   "LastUpdateTime": [TxType.PERSISTENT],
+  "LastUpdateException": [TxType.PERSISTENT],
   "LimitSetSpeed": [TxType.PERSISTENT],
   "LimitSetSpeedNeural": [TxType.PERSISTENT],
   "LiveParameters": [TxType.PERSISTENT],
@@ -109,13 +108,8 @@ keys = {
   "Offroad_PandaFirmwareMismatch": [TxType.CLEAR_ON_MANAGER_START, TxType.CLEAR_ON_PANDA_DISCONNECT],
   "Offroad_InvalidTime": [TxType.CLEAR_ON_MANAGER_START],
   "Offroad_IsTakingSnapshot": [TxType.CLEAR_ON_MANAGER_START],
-  "DriverUsbCameraID": [TxType.PERSISTENT],
-  "RoadUsbCameraID": [TxType.PERSISTENT],
-  "DriverUsbCameraFx": [TxType.PERSISTENT],
-  "DriverUsbCameraFlip": [TxType.PERSISTENT],
-  "RoadUsbCameraFx": [TxType.PERSISTENT],
-  "RoadUsbCameraFlip": [TxType.PERSISTENT],
-  "TeslaModel": [TxType.PERSISTENT],
+  "Offroad_NeosUpdate": [TxType.CLEAR_ON_MANAGER_START],
+  "Offroad_UpdateFailed": [TxType.CLEAR_ON_MANAGER_START],
 }
 
 
@@ -154,6 +148,10 @@ class DBAccessor():
 
   def get(self, key):
     self._check_entered()
+
+    if self._vals is None:
+      return None
+
     try:
       return self._vals[key]
     except KeyError:
@@ -206,7 +204,8 @@ class DBReader(DBAccessor):
     finally:
       lock.release()
 
-  def __exit__(self, type, value, traceback): pass
+  def __exit__(self, exc_type, exc_value, traceback):
+    pass
 
 
 class DBWriter(DBAccessor):
@@ -231,14 +230,14 @@ class DBWriter(DBAccessor):
       os.chmod(self._path, 0o777)
       self._lock = self._get_lock(True)
       self._vals = self._read_values_locked()
-    except:
+    except Exception:
       os.umask(self._prev_umask)
       self._prev_umask = None
       raise
 
     return self
 
-  def __exit__(self, type, value, traceback):
+  def __exit__(self, exc_type, exc_value, traceback):
     self._check_entered()
 
     try:
@@ -312,34 +311,37 @@ def read_db(params_path, key):
   except IOError:
     return None
 
+
 def write_db(params_path, key, value):
   if isinstance(value, str):
     value = value.encode('utf8')
 
   prev_umask = os.umask(0)
-  lock = FileLock(params_path+"/.lock", True)
+  lock = FileLock(params_path + "/.lock", True)
   lock.acquire()
 
   try:
-    tmp_path = tempfile.mktemp(prefix=".tmp", dir=params_path)
-    with open(tmp_path, "wb") as f:
+    tmp_path = tempfile.NamedTemporaryFile(mode="wb", prefix=".tmp", dir=params_path, delete=False)
+    with tmp_path as f:
       f.write(value)
       f.flush()
       os.fsync(f.fileno())
+    os.chmod(tmp_path.name, 0o666)
 
     path = "%s/d/%s" % (params_path, key)
-    os.rename(tmp_path, path)
+    os.rename(tmp_path.name, path)
     fsync_dir(os.path.dirname(path))
   finally:
     os.umask(prev_umask)
     lock.release()
+
 
 class Params():
   def __init__(self, db=PARAMS):
     self.db = db
 
     # create the database if it doesn't exist...
-    if not os.path.exists(self.db+"/d"):
+    if not os.path.exists(self.db + "/d"):
       with self.transaction(write=True):
         pass
 
@@ -365,9 +367,6 @@ class Params():
 
   def panda_disconnect(self):
     self._clear_keys_with_type(TxType.CLEAR_ON_PANDA_DISCONNECT)
-  
-  def car_start(self):
-    self._clear_keys_with_type(TxType.CLEAR_ON_CAR_START)
 
   def delete(self, key):
     with self.transaction(write=True) as txn:
@@ -412,22 +411,3 @@ def put_nonblocking(key, val):
   t = threading.Thread(target=f, args=(key, val))
   t.start()
   return t
-
-
-if __name__ == "__main__":
-  params = Params()
-  if len(sys.argv) > 2:
-    params.put(sys.argv[1], sys.argv[2])
-  else:
-    for k in keys:
-      pp = params.get(k)
-      if pp is None:
-        print("%s is None" % k)
-      elif all(chr(c) in string.printable for c in pp):
-        print("%s = %s" % (k, pp))
-      else:
-        print("%s = %s" % (k, binascii.hexlify(pp)))
-
-  # Test multiprocess:
-  # seq 0 100000 | xargs -P20 -I{} python common/params.py DongleId {} && sleep 0.05
-  # while python common/params.py DongleId; do sleep 0.05; done

@@ -1,6 +1,10 @@
 #pragma once
+<<<<<<< HEAD
 #ifndef _UI_H
 #define _UI_H
+=======
+#include "messaging.hpp"
+>>>>>>> release2
 
 #ifdef __APPLE__
 #include <OpenGL/gl3.h>
@@ -12,10 +16,15 @@
 #define NANOVG_GLES3_IMPLEMENTATION
 #define nvgCreate nvgCreateGLES3
 #endif
+<<<<<<< HEAD
 
 #include <capnp/serialize.h>
 #include <pthread.h>
 
+=======
+#include <atomic>
+#include <pthread.h>
+>>>>>>> release2
 #include "nanovg.h"
 
 #include "common/mat.h"
@@ -23,12 +32,17 @@
 #include "common/visionimg.h"
 #include "common/framebuffer.h"
 #include "common/modeldata.h"
+<<<<<<< HEAD
 #include "messaging.hpp"
 #include "cereal/gen/c/log.capnp.h"
 #include "bbuistate.h"
 #include "sound.hpp"
 
 
+=======
+#include "sound.hpp"
+
+>>>>>>> release2
 #define STATUS_STOPPED 0
 #define STATUS_DISENGAGED 1
 #define STATUS_ENGAGED 2
@@ -39,11 +53,14 @@
 #define NET_DISCONNECTED 1
 #define NET_ERROR 2
 
+<<<<<<< HEAD
 #define ALERTSIZE_NONE 0
 #define ALERTSIZE_SMALL 1
 #define ALERTSIZE_MID 2
 #define ALERTSIZE_FULL 3
 
+=======
+>>>>>>> release2
 #define COLOR_BLACK nvgRGBA(0, 0, 0, 255)
 #define COLOR_BLACK_ALPHA(x) nvgRGBA(0, 0, 0, x)
 #define COLOR_WHITE nvgRGBA(255, 255, 255, 255)
@@ -60,7 +77,10 @@
 //#define SHOW_SPEEDLIMIT 1
 //#define DEBUG_TURN
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> release2
 const int vwp_w = 1920;
 const int vwp_h = 1080;
 const int nav_w = 640;
@@ -101,13 +121,19 @@ const uint8_t bg_colors[][4] = {
   [STATUS_ALERT] = {0xC9, 0x22, 0x31, 0xff},
 };
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> release2
 typedef struct UIScene {
   int frontview;
   int fullview;
 
+<<<<<<< HEAD
   int transformed_width, transformed_height;
 
+=======
+>>>>>>> release2
   ModelData model;
 
   float mpc_x[50];
@@ -116,6 +142,7 @@ typedef struct UIScene {
   bool world_objects_visible;
   mat4 extrinsic_matrix;      // Last row is 0 so we can use mat4.
 
+<<<<<<< HEAD
   float v_cruise;
   uint64_t v_cruise_update_ts;
   float v_ego;
@@ -133,11 +160,21 @@ typedef struct UIScene {
   bool uilayout_sidebarcollapsed;
   bool uilayout_mapenabled;
   bool uilayout_mockengaged;
+=======
+  float speedlimit;
+  bool speedlimit_valid;
+
+  bool is_rhd;
+  bool map_valid;
+  bool uilayout_sidebarcollapsed;
+  bool uilayout_mapenabled;
+>>>>>>> release2
   // responsive layout
   int ui_viz_rx;
   int ui_viz_rw;
   int ui_viz_ro;
 
+<<<<<<< HEAD
   int lead_status;
   float lead_d_rel, lead_y_rel, lead_v_rel;
 
@@ -171,6 +208,22 @@ typedef struct UIScene {
   int hwType;
   int satelliteCount;
   uint8_t athenaStatus;
+=======
+  std::string alert_text1;
+  std::string alert_text2;
+  std::string alert_type;
+  cereal::ControlsState::AlertSize alert_size;
+
+  cereal::HealthData::HwType hwType;
+  int satelliteCount;
+  uint8_t athenaStatus;
+
+  cereal::ThermalData::Reader thermal;
+  cereal::RadarState::LeadData::Reader lead_data[2];
+  cereal::ControlsState::Reader controls_state;
+  cereal::DriverState::Reader driver_state;
+  cereal::DMonitoringState::Reader dmonitoring_state;
+>>>>>>> release2
 } UIScene;
 
 typedef struct {
@@ -188,6 +241,7 @@ typedef struct {
 } track_vertices_data;
 
 
+<<<<<<< HEAD
 
 typedef struct UIState {
 
@@ -196,6 +250,9 @@ typedef struct UIState {
   int plus_state;
   //BB end
 
+=======
+typedef struct UIState {
+>>>>>>> release2
   pthread_mutex_t lock;
 
   // framebuffer
@@ -206,7 +263,10 @@ typedef struct UIState {
   NVGcontext *vg;
 
   // fonts and images
+<<<<<<< HEAD
   int font_courbd;
+=======
+>>>>>>> release2
   int font_sans_regular;
   int font_sans_semibold;
   int font_sans_bold;
@@ -221,6 +281,7 @@ typedef struct UIState {
   int img_network[6];
 
   // sockets
+<<<<<<< HEAD
   Context *ctx;
   SubSocket *model_sock;
   SubSocket *controlsstate_sock;
@@ -238,6 +299,12 @@ typedef struct UIState {
   Poller * ublox_poller;
 
   int active_app;
+=======
+  SubMaster *sm;
+  PubMaster *pm;
+
+  cereal::UiLayoutState::App active_app;
+>>>>>>> release2
 
   // vision state
   bool vision_connected;
@@ -262,7 +329,10 @@ typedef struct UIState {
 
   int rgb_width, rgb_height, rgb_stride;
   size_t rgb_buf_len;
+<<<<<<< HEAD
   mat4 rgb_transform;
+=======
+>>>>>>> release2
 
   int rgb_front_width, rgb_front_height, rgb_front_stride;
   size_t rgb_front_buf_len;
@@ -272,16 +342,23 @@ typedef struct UIState {
 
   // timeouts
   int awake_timeout;
+<<<<<<< HEAD
   int volume_timeout;
   int controls_timeout;
   int alert_sound_timeout;
+=======
+  int controls_timeout;
+>>>>>>> release2
   int speed_lim_off_timeout;
   int is_metric_timeout;
   int longitudinal_control_timeout;
   int limit_set_speed_timeout;
   int hardware_timeout;
   int last_athena_ping_timeout;
+<<<<<<< HEAD
   int offroad_layout_timeout;
+=======
+>>>>>>> release2
 
   bool controls_seen;
 
@@ -292,6 +369,7 @@ typedef struct UIState {
   bool limit_set_speed;
   float speed_lim_off;
   bool is_ego_over_limit;
+<<<<<<< HEAD
   char alert_type[64];
   AudibleAlert alert_sound;
   int alert_size;
@@ -309,20 +387,41 @@ typedef struct UIState {
   bool model_changed;
   bool livempc_or_radarstate_changed;
 
+=======
+  float alert_blinking_alpha;
+  bool alert_blinked;
+  bool started;
+  bool vision_seen;
+
+  std::atomic<float> light_sensor;
+
+  int touch_fd;
+
+>>>>>>> release2
   GLuint frame_vao[2], frame_vbo[2], frame_ibo[2];
   mat4 rear_frame_mat, front_frame_mat;
 
   model_path_vertices_data model_path_vertices[MODEL_LANE_PATH_CNT * 2];
 
   track_vertices_data track_vertices[2];
+<<<<<<< HEAD
 } UIState;
 
 // API
 void ui_draw_vision_alert(UIState *s, int va_size, int va_color,
+=======
+
+  Sound sound;
+} UIState;
+
+// API
+void ui_draw_vision_alert(UIState *s, cereal::ControlsState::AlertSize va_size, int va_color,
+>>>>>>> release2
                           const char* va_text1, const char* va_text2);
 void ui_draw(UIState *s);
 void ui_draw_sidebar(UIState *s);
 void ui_draw_image(NVGcontext *vg, float x, float y, float w, float h, int image, float alpha);
+<<<<<<< HEAD
 void ui_nvg_init(UIState *s);
 static void set_awake(UIState *s, bool awake); 
 
@@ -355,3 +454,8 @@ const int alert_sizes[] = {
   [ALERTSIZE_FULL] = vwp_h,
 };
 
+=======
+void ui_draw_rect(NVGcontext *vg, float x, float y, float w, float h, NVGcolor color, float r = 0, int width = 0);
+void ui_draw_rect(NVGcontext *vg, float x, float y, float w, float h, NVGpaint &paint, float r = 0);
+void ui_nvg_init(UIState *s);
+>>>>>>> release2
